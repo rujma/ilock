@@ -1,0 +1,1 @@
+cmd_/home/rui/Desktop/ReedDriver/ReedDeviceModule.ko := /home/rui/buildroot-2018.08/output/host/usr/bin/arm-buildroot-linux-uclibcgnueabihf-ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/rui/Desktop/ReedDriver/ReedDeviceModule.ko /home/rui/Desktop/ReedDriver/ReedDeviceModule.o /home/rui/Desktop/ReedDriver/ReedDeviceModule.mod.o ;  true

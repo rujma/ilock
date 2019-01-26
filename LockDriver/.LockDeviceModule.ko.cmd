@@ -1,0 +1,1 @@
+cmd_/home/rui/Desktop/LockDriver/LockDeviceModule.ko := /home/rui/buildroot-2018.08/output/host/usr/bin/arm-buildroot-linux-uclibcgnueabihf-ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/rui/Desktop/LockDriver/LockDeviceModule.ko /home/rui/Desktop/LockDriver/LockDeviceModule.o /home/rui/Desktop/LockDriver/LockDeviceModule.mod.o ;  true
