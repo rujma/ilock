@@ -14,7 +14,6 @@ public:
 	~CRFID();
 	bool checkRFIDPresence(void);
 	bool readRFIDCard(void);
-	void saveRFID(void);
 	void getLastRFID(char*);
 private:
 	char idRFID[RFID_BYTE_SIZE];

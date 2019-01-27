@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <time.h>
+#include <iostream>
 #include "RFID.h"
 #include "Lock.h"
 #include "Query.h"
@@ -18,6 +19,7 @@ using namespace std;
 sem_t sem_rfid;
 sem_t sem_validate;
 sem_t sem_manage;
+sem_t sem_lock;
 // Mutexes
 pthread_mutex_t mutex_rfid = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_admin = PTHREAD_MUTEX_INITIALIZER;
@@ -25,6 +27,7 @@ pthread_mutex_t mutex_admin = PTHREAD_MUTEX_INITIALIZER;
 /* Object pointers */
 CRFID rfid;
 CQuery query;
+CLock lock;
 
 /* Timers */
 timer_t timer_rfid;
@@ -32,6 +35,23 @@ timer_t timer_rfid;
 /* Global variables */
 bool admin = false;
 
+void* tActuateLock(void* arg)
+{
+    while(1)
+    {
+        // Wait for lock actuation semaphore after sucessfull validation
+        sem_wait(&sem_lock);
+        // Unlock
+        if(!lock.actuateLock(lock.UNLOCK))
+            continue;
+        // Wait for door to open
+        while(lock.checkReedSwitch() == lock.LOCKED);
+        // Wait for door to close
+        while(lock.checkReedSwitch() == lock.UNLOCKED);
+        // Lock when door is closed
+        lock.actuateLock(lock.LOCK);
+    }
+}
 void* tAcquireRFID(void* arg)
 {
     while(1)
@@ -73,7 +93,7 @@ void* tValidation(void* arg)
         // Unlock RFID mutex
         pthread_mutex_unlock(&mutex_rfid);
         // Send query - UNSAFE USAGE!
-        string query_result(query.sendQueryGetResponse("admin", "rfid", "idRFID", id_rfid));
+        string query_result(query.selectQueryGetResponse("admin", "rfid", "idRFID", id_rfid));
         cout << "Query result: " << query_result << endl;
         // Check if query is empty (if it is empty, means that the RFID doesn't exist in db)
         if(query_result.empty())
@@ -87,7 +107,7 @@ void* tValidation(void* arg)
             // Get admin status from result
             if(query_result.find("admin = 1") != string::npos)
             {
-                cout << "ADMIN"<<endl;
+                cout << "ADMIN" <<endl;
                 continue;
             }
         }
@@ -142,14 +162,18 @@ int main(int argc, char *argv[])
     sem_init(&sem_rfid, PSHARED, 0);
     sem_init(&sem_validate, PSHARED, 0);
     sem_init(&sem_manage, PSHARED, 0);
+    sem_init(&sem_lock, PSHARED, 0);
     // Initialize threads
     pthread_t tRfidID;
     pthread_create(&tRfidID, NULL, tAcquireRFID, NULL);
     pthread_t tValidationID;
     pthread_create(&tValidationID, NULL, tValidation, NULL);
+    pthread_t tActuateLockID;
+    pthread_create(&tActuateLockID, NULL, tActuateLock, NULL);
     // Join threads
     pthread_join(tRfidID, NULL);
     pthread_join(tValidationID, NULL);
+    pthread_join(tActuateLockID, NULL);
     // Wait for threads to finish
     pthread_exit(NULL);
     return a.exec();

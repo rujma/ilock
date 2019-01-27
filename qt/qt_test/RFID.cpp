@@ -31,19 +31,14 @@ bool CRFID::readRFIDCard()
   	byte result = mfrc.PICC_Select(&mfrc.uid);
   	if(result == mfrc.STATUS_OK)
   	{
-  		saveRFID();
+        memcpy(idRFID, mfrc.uid.uidByte, RFID_BYTE_SIZE);
   		return 1;
   	}
   	else
   		return 0;
 }
 
-void CRFID::saveRFID()
-{
-	memcpy(idRFID, mfrc.uid.uidByte, RFID_BYTE_SIZE);
-}
-
 void CRFID::getLastRFID(char* buf)
 {
-	sprintf(buf, idRFID);
+    sprintf(buf, idRFID);
 }

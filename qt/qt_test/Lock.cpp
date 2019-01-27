@@ -1,3 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 #include "Lock.h"
 
 using namespace std;
@@ -19,7 +25,7 @@ int CLock::checkReedSwitch()
 	int ret, receive;
 	int fd = open(reedDD, O_RDONLY);
 	if(fd < 0){
-		perror("Cant open reed switch device driver\n");
+        perror("Can't open reed switch device driver\n");
 		return -1;
 	}
 
@@ -37,7 +43,7 @@ bool CLock::actuateLock(char value)
 	int ret;
 	int fd = open(lockDD, O_WRONLY);
 	if(fd < 0){
-		perror("Cant open lock switch device driver\n");
+        perror("Can't open lock switch device driver\n");
 		return false;
 	}
 
@@ -46,5 +52,6 @@ bool CLock::actuateLock(char value)
 		perror("Cant write to lock device driver\n");
 		return false;
 	}
-	else return true;
+    else
+        return true;
 }

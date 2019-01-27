@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <errno.h>
+#include <sstream>
+#include <iostream>
 #include "Query.h"
 
 /* This is the daemon database communication driver */
@@ -52,31 +56,43 @@ bool CQuery::closeCallbackQueue()
 	return false;
 }
 
-bool CQuery::sendQuery(string custom_query) // change from const char *
+/* Insert functions */
+bool CQuery::insertRFIDQuery(const char* id_rfid, const char * name_rfid, bool admin)
 {
-	int msgsz;
-	if(openQueryQueue())
-	{
-		memset(query, 0, sizeof(query));
-		sprintf(query, custom_query.c_str());
-		msgsz = mq_send(msgq_id_query, query, strlen(query)+1, 1);
-		if (msgsz == -1) 
-    	{
-        	perror("In query queue mq_send()");
-        	return false;
-    	}    	
-    	return closeQueryQueue();
-	}
-	return false;
+    stringstream ss;
+    ss << "insert into rfid values ('" << id_rfid << "','" << name_rfid << "'," << (int)admin << ")";
+    return sendQuery(ss.str());
 }
 
+bool CQuery::insertFaceQuery(int id_face, const char* id_rfid)
+{
+    stringstream ss;
+    ss << "insert into face values (" << id_face << ",'" << id_rfid << "')";
+    return sendQuery(ss.str());
+}
+
+bool CQuery::insertImageQuery(int id_image, int id_face, const char* face_path)
+{
+    stringstream ss;
+    ss << "insert into image values (" << id_image << "," << id_face << ",'" << face_path << "')";
+    return sendQuery(ss.str());
+}
+
+/* Delete functions */
+bool CQuery::deleteByNameQuery(const char* name_rfid)
+{
+    stringstream ss;
+    ss << "delete from rfid where nameRFID='" << name_rfid << "'";
+    return sendQuery(ss.str());
+}
+
+/* Select functions */
 bool CQuery::selectQuery(const char* column, const char* table, const char* cond_column, int cond)
 {
 	stringstream ss;
 	ss << "select " << column << " from " << table << " where " << cond_column << "=" << cond;
 	return sendQuery(ss.str());
 }
-
 
 bool CQuery::selectQuery(const char* column, const char* table, const char* cond_column, const char* cond)
 {
@@ -92,33 +108,53 @@ bool CQuery::selectQuery(const char* column, const char* table)
 	return sendQuery(ss.str());
 }
 
+/* Unsafe select functions */
+string CQuery::selectQueryGetResponse(const char* column, const char* table, const char* cond_column, const char* cond)
+{
+    selectQuery(column, table, cond_column, cond);
+    receiveQuery();
+    return getLastQueryResult();
+}
+
+/* Worker functions */
+bool CQuery::sendQuery(string custom_query) // change from const char *
+{
+    int msgsz;
+    if(openQueryQueue())
+    {
+        memset(query, 0, sizeof(query));
+        sprintf(query, custom_query.c_str());
+        msgsz = mq_send(msgq_id_query, query, strlen(query)+1, 1);
+        if (msgsz == -1)
+        {
+            perror("In query queue mq_send()");
+            return false;
+        }
+        return closeQueryQueue();
+    }
+    return false;
+}
+
 bool CQuery::receiveQuery()
 {
-	int msgsz;
-	unsigned int sender;
-	if(openCallbackQueue())
-	{
-		memset(result, 0, sizeof(result));
-		msgsz = mq_receive(msgq_id_callback, result, MAX_MSG_LEN, &sender);
-    	if (msgsz == -1) 
-    	{
-        	perror("In callback queue mq_receive()");
-        	return false;
-    	}
-    	return closeCallbackQueue();
+    int msgsz;
+    unsigned int sender;
+    if(openCallbackQueue())
+    {
+        memset(result, 0, sizeof(result));
+        msgsz = mq_receive(msgq_id_callback, result, MAX_MSG_LEN, &sender);
+        if (msgsz == -1)
+        {
+            perror("In callback queue mq_receive()");
+            return false;
+        }
+        return closeCallbackQueue();
     }
     return false;
 }
 
 string CQuery::getLastQueryResult()
 {
-	string str(result);
-	return str;
-}
-
-string CQuery::sendQueryGetResponse(const char* column, const char* table, const char* cond_column, const char* cond)
-{
-    selectQuery(column, table, cond_column, cond);
-    receiveQuery();
-    return getLastQueryResult();
+    string str(result);
+    return str;
 }

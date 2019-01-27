@@ -5,12 +5,8 @@
 
 #include <pthread.h>
 #include <mqueue.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
 #include <string>
-#include <sstream>
-#include <iostream>
+#include <string.h>
 
 #define MAX_MSG_LEN 10000
 
@@ -21,26 +17,37 @@ class CQuery{
 public:
 	CQuery();
 	~CQuery();
+
 	bool openQueryQueue();
 	bool openCallbackQueue();
 	bool closeQueryQueue();
 	bool closeCallbackQueue();
-    bool insertQuery(const char*, const char*, const char*);
+
+    bool insertRFIDQuery(const char*, const char *, bool);    // RFID entity
+    bool insertFaceQuery(int, const char*);                   // Face entity
+    bool insertImageQuery(int, int, const char*);             // Image entity
+
+    bool deleteByNameQuery(const char*);                      // Delete RFID by name (on delete cascade)
+
 	bool selectQuery(const char*, const char*, const char*, const char*);
 	bool selectQuery(const char*, const char*, const char*, int cond);
 	bool selectQuery(const char*, const char*);
-    string sendQueryGetResponse(const char*, const char*, const char*, const char*);   // Unsafe
-    string sendQueryGetResponse(const char*, const char*, const char*, int cond);      // Unsafe
-    string sendQueryGetResponse(const char*, const char*);                             // Unsafe
-	bool sendQuery(string);
+
+    string selectQueryGetResponse(const char*, const char*, const char*, const char*);    // Unsafe version of selectQuery + receiveQuery
+    string selectQueryGetResponse(const char*, const char*, const char*, int);            // Unsafe version of selectQuery + receiveQuery
+    string selectQueryGetResponse(const char*, const char*);                              // Unsafe version of selectQuery + receiveQuery
+
+    bool sendQuery(string);
 	bool receiveQuery();
 	string getLastQueryResult();
 
 private:
 	char query[MAX_MSG_LEN];
 	char result[MAX_MSG_LEN];
+
 	const char * msgq_query;
 	const char * msgq_callback;
+
 	mqd_t msgq_id_query;
 	mqd_t msgq_id_callback;
 };

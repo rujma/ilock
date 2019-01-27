@@ -45,5 +45,4 @@ void CRFID::saveRFID()
 void CRFID::getLastRFID(char* buf)
 {
 	sprintf(buf, idRFID);
-
 }
