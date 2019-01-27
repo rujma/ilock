@@ -1,4 +1,5 @@
 #include "RFID.h"
+
 #include <cstdio>
 #include <iostream>
 #include <string.h>
@@ -45,5 +46,4 @@ void CRFID::saveRFID()
 void CRFID::getLastRFID(char* buf)
 {
 	sprintf(buf, idRFID);
-
 }

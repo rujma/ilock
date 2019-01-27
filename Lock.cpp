@@ -1,4 +1,4 @@
-#include "CLock.h"
+#include "Lock.h"
 
 using namespace std;
 

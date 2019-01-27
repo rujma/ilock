@@ -14,19 +14,53 @@ using namespace std;
 
 /* Synchronization */
 sem_t semRFID;
-pthread_mutex_t mutexRFID = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condNewRFID = PTHREAD_COND_INITIALIZER;
-pthread_cond_t condRFID = PTHREAD_COND_INITIALIZER;
+sem_t semValidateRFID;
+sem_t semManageRFID;
+/*
+	If instead of a semaphore, a contition variable is used:
+	struct binary_semaphore
+	{
+		pthread_mutex_t mutex;
+		pthread_cond_t cvar;
+		int v;
+	} 
 
-/* OS Timers */
+	post()
+	{
+		pthread_mutex_lock(sem.mutex);
+		v+=1;
+		pthread_cond_signal(sem.cvar);
+		pthread_mutex_unlock(sem.mutex);
+	}
+
+	wait()
+	{
+		pthread_mutex_lock(sem.mutex);
+		while(sem.v == 0)
+			pthread_cond_wait(sem.cvar, sem.mutex);
+		sem.v-=1;
+		pthread_mutex_unlock(sem.mutex);
+	}
+*/
+pthread_mutex_t mutexRFID = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexAdmin = PTHREAD_MUTEX_INITIALIZER;
+
+/* Timers */
 timer_t sTimeRFID;
 
 /* Global variables */
 bool admin = false; 
 
+
+static void timerHandler(int sig, siginfo_t *si, void *uc)
+{
+    if (sig == SIGRTMIN)
+    	// Each two seconds
+        sem_post(&semRFID);
+}
+
 void* tActuateLock(void* arg)
 {
-	CLock *p_Lock = (CLock*)arg;
 	while(1)
 	{
 		// Wait for lock actuation semaphore after sucessfull validation
@@ -51,30 +85,23 @@ void* tAcquireRFID(void* arg)
 		// Wait for semaphore post
 		sem_wait(&semRFID);
 		// Check RFID presence
-		printf("Near an RFID card\n");
 		if(!p_RFID->checkRFIDPresence())
-		{
 			// If it's not present, go back to while(1)
-			printf("RFID not present!\n");
 			continue;
-		}
 		// Take RFID mutex to write to new RFID value
 		pthread_mutex_lock(&mutexRFID);
 		if(p_RFID->readRFIDCard())
 		{
+			pthread_mutex_lock(&mutexAdmin);
 			// Check admin status from validation task (admin card was detected on mentioned task)
 			if(admin) 
-				pthread_cond_signal(&condNewRFID, &mutexRFID);  // triggers task to add new user
+				sem_post(&semValidateRFID);   // triggers task to add new user
 			else 
-				pthread_cond_signal(&condRFID, &mutexRFID);     // triggers validation task
-		}
-		else
-		{
-			// Error while reading card
-			printf("Card ccouldn't be read!\n");
+				sem_post(&semManageRFID);     // triggers validation task
+			pthread_mutex_unlock(&mutexAdmin);
 		}
 		// Give RFID mutex back
-		pthread_mutex_unlock(&mutexRFID);	
+		pthread_mutex_unlock(&mutexRFID);
 	}
 }
 
@@ -84,37 +111,38 @@ void* tValidation(void* arg)
 
 	while(1)
 	{
+		// Wait for new RFID value
+		sem_wait(&semValidateRFID);
 		// Lock mutex to read new RFID
 		pthread_mutex_lock(&mutexRFID);
-		// Wait for new RFID value
-		pthread_cond_wait(&condRFID, &mutexRFID);
 		// Read latest RFID
 		p_RFID->getLastRFID(rfid);
+		// Unlock RFID mutex
+		pthread_mutex_unlock(&mutexRFID);
 		// Send query
-		if(!p_Query.selectQuery("admin", "rfid", "idRFID", rfid))
+		if(!p_Query.selectQuery("admin", "rfid", "idRFID", rfid)) 
 			continue;
 		// Get query result
-		if(!p_Query.receiveQuery())
+		if(!p_Query.receiveQuery()) 
 			continue;
+		// Save query result
 		string query_result(p_Query.getLastQueryResult());
-		// Get admin status from result	
-		if(query_result.empty())
+		// Check if query is empty (if it is empty, means that the RFID doesn't exist in db)
+		if(query_result.empty()) 
 			continue;
 		else
 		{
+			// Get admin status from result	
 			if(query_result.find("admin = 1") != string::npos)
 			{
+				pthread_mutex_lock(&mutexAdmin);
 				admin =  true;
+				pthread_mutex_unlock(&mutexAdmin);
 				sem_post(&semManage);
 				continue;
 			}
-			else admin = false;		
 		}
-		// Unlock RFID mutex
-		pthread_mutex_unlock(&mutexRFID);
-
 		// Start face recognition
-		/* START CAMERA SAMPLING */
 		pthread_mutex_lock(&mutexUpdate);
 		/* Update GUI */
 		pthread_mutex_unlock(&mutexUpdate);
@@ -148,10 +176,26 @@ void* tValidation(void* arg)
 	}
 }
 
-static void timerHandler(int sig, siginfo_t *si, void *uc)
+void* tManagement(void* arg)
 {
-    if (sig == SIGRTMIN)
-        sem_post(&semRFID);
+	while(1)
+	{
+		sem_wait(&semManage);
+		pthread_mutex_lock(&mutexUpdate);
+		/* UPDATE GUI */
+		pthread_mutex_unlock(&mutexUpdate);
+		// Events
+		pthread_mutex_lock(&mutexEvent);
+		while(/* NO EVENT */)
+		{
+			pthread_cond_wait(&condEvent, &mutexEvent);
+			/* STORE DATA ON OBJECT */
+		}
+		pthread_mutex_unlock(&mutexEvent);
+
+		
+
+	}
 }
 
 static int makeTimer( timer_t *timerID, int expireMS, int intervalMS )
@@ -175,10 +219,10 @@ static int makeTimer( timer_t *timerID, int expireMS, int intervalMS )
     te.sigev_value.sival_ptr = timerID;
     timer_create(CLOCK_REALTIME, &te, timerID);
 
-    its.it_interval.tv_sec = 0;
-    its.it_interval.tv_nsec = intervalMS * 1000000;
-    its.it_value.tv_sec = 0;
-    its.it_value.tv_nsec = expireMS * 1000000;
+    its.it_interval.tv_sec = 2;
+    its.it_interval.tv_nsec = 0;
+    its.it_value.tv_sec = 2;
+    its.it_value.tv_nsec = 0;
     timer_settime(*timerID, 0, &its, NULL);
 
     return 1;

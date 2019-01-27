@@ -1,5 +1,11 @@
 #include "Query.h"
 #include "RFID.h"
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <time.h>
 #include <cstdio>
 #include <iostream>
 #include <string.h>

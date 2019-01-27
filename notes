@@ -1,0 +1,18 @@
+Lock device driver: PIN BCM27 -> which is pin number 13
+Reed device driver: PIN BCM22 -> which is pin number 15
+
+		MFRC522	Raspberry Pi
+Signal		Pin	Pin number
+RST/Reset	RST	22
+SPI SS		SDA	24
+SPI MOSI	MOSI	19
+SPI MISO	MISO	21
+SPI SCK		SCK	23
+3V		3v	1
+GND		GND	25
+
+
+
+DATABASE
+
+To add stuff: insert into table values('TEXT','TEXT', NUMBER)

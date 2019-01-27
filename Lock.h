@@ -1,5 +1,5 @@
-#ifndef _CLock_H_
-#define _CLock_H_
+#ifndef _Lock_H_
+#define _Lock_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +16,13 @@ public:
 	~CLock();
 	int checkReedSwitch();
 	bool actuateLock(char value); 
+	enum state {LOCK = 0, UNLOCK = 1};
 private:
 	const char * reedDD;
 	const char * lockDD;
 };
+
+enum
 
 
 #endif

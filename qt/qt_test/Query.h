@@ -25,9 +25,13 @@ public:
 	bool openCallbackQueue();
 	bool closeQueryQueue();
 	bool closeCallbackQueue();
+    bool insertQuery(const char*, const char*, const char*);
 	bool selectQuery(const char*, const char*, const char*, const char*);
 	bool selectQuery(const char*, const char*, const char*, int cond);
 	bool selectQuery(const char*, const char*);
+    string sendQueryGetResponse(const char*, const char*, const char*, const char*);   // Unsafe
+    string sendQueryGetResponse(const char*, const char*, const char*, int cond);      // Unsafe
+    string sendQueryGetResponse(const char*, const char*);                             // Unsafe
 	bool sendQuery(string);
 	bool receiveQuery();
 	string getLastQueryResult();
