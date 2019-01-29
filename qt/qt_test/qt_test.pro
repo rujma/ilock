@@ -19,7 +19,8 @@ SOURCES += \
     Lock.cpp \
     MFRC522.cpp \
     Query.cpp \
-    RFID.cpp
+    RFID.cpp \
+    Manage.cpp
 
 target.path = /root
 INSTALLS += target
@@ -28,6 +29,7 @@ HEADERS += \
     Lock.h \
     MFRC522.h \
     Query.h \
-    RFID.h
+    RFID.h \
+    Manage.h
 
 LIBS += -lrt -lbcm2835 -lsqlite3

@@ -24,8 +24,8 @@ public:
 	bool closeCallbackQueue();
 
     bool insertRFIDQuery(const char*, const char *, bool);    // RFID entity
-    bool insertFaceQuery(int, const char*);                   // Face entity
-    bool insertImageQuery(int, int, const char*);             // Image entity
+    bool insertFaceQuery(const char*);                   // Face entity
+    bool insertImageQuery(int, const char*);             // Image entity
 
     bool deleteByNameQuery(const char*);                      // Delete RFID by name (on delete cascade)
 
@@ -40,6 +40,8 @@ public:
     bool sendQuery(string);
 	bool receiveQuery();
 	string getLastQueryResult();
+    bool lastInsertValue(int*);
+    bool getMaxID(int*, const char*, const char*);
 
 private:
 	char query[MAX_MSG_LEN];

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <string>
 #include <sstream>
 #include <iostream>
 #include "Query.h"
@@ -64,17 +65,17 @@ bool CQuery::insertRFIDQuery(const char* id_rfid, const char * name_rfid, bool a
     return sendQuery(ss.str());
 }
 
-bool CQuery::insertFaceQuery(int id_face, const char* id_rfid)
+bool CQuery::insertFaceQuery(const char* id_rfid)
 {
     stringstream ss;
-    ss << "insert into face values (" << id_face << ",'" << id_rfid << "')";
+    ss << "insert into face(idRFID) values ('" << id_rfid << "')";
     return sendQuery(ss.str());
 }
 
-bool CQuery::insertImageQuery(int id_image, int id_face, const char* face_path)
+bool CQuery::insertImageQuery(int id_face, const char* face_path)
 {
     stringstream ss;
-    ss << "insert into image values (" << id_image << "," << id_face << ",'" << face_path << "')";
+    ss << "insert into image(idFace,facePATH) values (" << id_face << ",'" << face_path << "')";
     return sendQuery(ss.str());
 }
 
@@ -157,4 +158,40 @@ string CQuery::getLastQueryResult()
 {
     string str(result);
     return str;
+}
+
+bool CQuery::lastInsertValue(int* value)
+{
+    int temp;
+    if(sendQuery("select last_insert_rowid()"))
+    {
+        receiveQuery();
+        string str(getLastQueryResult());
+        istringstream iss(str);
+
+        iss >> temp;
+        *value = temp;
+        return true;
+    }
+    else
+        return false;
+}
+
+bool CQuery::getMaxID(int* value, const char* column, const char* table)
+{
+    int temp;
+    stringstream ss;
+    ss << "select max(" << column << ") from " << table;
+    if(sendQuery(ss.str()))
+    {
+        receiveQuery();
+        string str(getLastQueryResult());
+        istringstream iss(str);
+
+        iss >> temp;
+        *value = temp;
+        return true;
+    }
+    else
+        return false;
 }

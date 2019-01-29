@@ -8,7 +8,7 @@
 #include <iostream>
 #include "RFID.h"
 #include "Lock.h"
-#include "Query.h"
+#include "Manage.h"
 
 #define PSHARED 0
 
@@ -23,10 +23,21 @@ sem_t sem_lock;
 // Mutexes
 pthread_mutex_t mutex_rfid = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_admin = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_update = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_event = PTHREAD_MUTEX_INITIALIZER;
+// Condition variable
+typedef struct
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t cond_var;
+    int value;
+}count_cond_var_t ;
+
+count_cond_var_t face_prediction;
 
 /* Object pointers */
 CRFID rfid;
-CQuery query;
+CManage query;
 CLock lock;
 
 /* Timers */
@@ -77,7 +88,6 @@ void* tAcquireRFID(void* arg)
         pthread_mutex_unlock(&mutex_rfid);
     }
 }
-
 void* tValidation(void* arg)
 {
     char id_rfid[RFID_BYTE_SIZE];
@@ -94,29 +104,35 @@ void* tValidation(void* arg)
         pthread_mutex_unlock(&mutex_rfid);
         // Send query - UNSAFE USAGE!
         string query_result(query.selectQueryGetResponse("admin", "rfid", "idRFID", id_rfid));
-        cout << "Query result: " << query_result << endl;
         // Check if query is empty (if it is empty, means that the RFID doesn't exist in db)
         if(query_result.empty())
+            continue;
+        // Get admin status from result
+        if(query_result.find("admin = 1") != string::npos)
         {
-            cout << "RFID doesn't exist in db" << endl;
+            // Change admin status
+            pthread_mutex_lock(&mutex_admin);
+            admin = true;
+            pthread_mutex_unlock(&mutex_admin);
+            // Signal the management task
+            sem_post(&sem_manage);
             continue;
         }
-
-        else
-        {
-            // Get admin status from result
-            if(query_result.find("admin = 1") != string::npos)
-            {
-                cout << "ADMIN" <<endl;
-                continue;
-            }
-        }
+        // Get camera images
     }
 }
 
+void* tManagement(void* arg)
+{
+    while(1)
+    {
+        // Wait for semaphore trigger
+        sem_wait(&sem_manage);
+    }
+}
 static void timerHandler(int sig, siginfo_t *si, void *uc)
 {
-    if (sig == SIGRTMIN)
+    if (sig == SIGUSR2)
     {
         cout << "TIMER TRIGGER" << endl;
         sem_post(&sem_rfid);
@@ -127,7 +143,7 @@ static int makeTimer( timer_t *timerID, int expireS, int intervalS )
     struct sigevent te;
     struct itimerspec its;
     struct sigaction sa;
-    int sigNo = SIGRTMIN;
+    int sigNo = SIGUSR2;  // CHANGED FROM SIGRTMIN
 
     /* Set up signal handler */
     sa.sa_flags = SA_SIGINFO;
@@ -170,10 +186,13 @@ int main(int argc, char *argv[])
     pthread_create(&tValidationID, NULL, tValidation, NULL);
     pthread_t tActuateLockID;
     pthread_create(&tActuateLockID, NULL, tActuateLock, NULL);
+    pthread_t tManagementID;
+    pthread_create(&tManagementID, NULL, tManagement, NULL);
     // Join threads
     pthread_join(tRfidID, NULL);
     pthread_join(tValidationID, NULL);
     pthread_join(tActuateLockID, NULL);
+    pthread_join(tManagementID, NULL);
     // Wait for threads to finish
     pthread_exit(NULL);
     return a.exec();
